@@ -159,8 +159,8 @@ runs:
       shell: bash
       working-directory: ${{inputs.workingDir}}
       run: rename setBundleId --value "${{ inputs.custom_package_name }}"
-    - if: ${{ inputs.aab_generation == 'true' || inputs.apk_generation == 'true' }}
-      env:
+    # - if: ${{ inputs.aab_generation == 'true' || inputs.apk_generation == 'true' }}
+    - env:
         KEY_PWD: ${{ inputs.key-pwd }}
         KEYSTORE_PWD: ${{ inputs.keystore-pwd }}
     - if: ${{ inputs.aab_generation == 'true' || inputs.apk_generation == 'true'  }} #name: Generate AAB or APK
