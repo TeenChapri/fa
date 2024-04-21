@@ -1,0 +1,172 @@
+name: "Build Flutter App (APK/AAB/IPA),Deploy Flutter web app to github pages , only runs on MAC runner"
+description: "Automates the build and deployment of your Flutter web app on Github gh pages, "
+author: "manishmg3994"
+#currently either apk/aab or ipa , single path is supported
+branding:
+  color: red
+  icon: rocket
+
+inputs: # add new run in release input
+  PAT:
+    description: "Github Personal Access Token (Classic)"
+    required: true
+    type: string
+  aab_generation:
+    description: "Generate AAB"
+    required: false
+    default: false
+    type: boolean
+  ipa_generation:
+    description: "Generate IPA (IOS)"
+    required: false
+    default: false
+    type: boolean
+  gh_pages:
+    description: "Deploy to Github Pages"
+    required: false
+    default: false
+    type: boolean
+  build_runner_build:
+    description: "Build Runner Build"
+    required: false
+    default: false
+    type: boolean
+  change_splash:
+    description: "Change Splash"
+    required: false
+    default: false
+    type: boolean
+  i18n_generation:
+    description: "Generate i18n"
+    required: false
+    default: false
+    type: boolean
+  generate_launcher_icons:
+    description: "Generate Launcher Icons"
+    required: false
+    default: false
+    type: boolean
+  custom_app_name:
+    description: "Custom App Name (Leave empty to skip)"
+    required: false
+    type: string
+  custom_package_name:
+    description: "Custom Package Name (Leave empty to skip)"
+    required: false
+    type: string
+  webRenderer:
+    description: "Which web renderer to be used, default is auto"
+    required: false
+    default: auto
+    type: string
+  workingDir:
+    description: "The directory where the project is (default .)"
+    required: false
+    default: .
+    # type: string
+  targetBranch:
+    required: false
+    default: gh-pages
+    type: string
+  baseHref:
+    description: "base href (if applicable)"
+    required: false
+    default: "/"
+    type: string
+  customArgs:
+    description: 'Custom args like: --dart-define="simple=example"'
+    required: false
+    default:
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - run: flutter pub get
+      shell: bash
+      working-directory: ${{inputs.workingDir}}
+    - name: Activate Rename
+      if: ${{ inputs.custom_package_name != '' ||  inputs.custom_app_name != ''}}
+      run: flutter pub global activate rename
+    - name: Build Runner Build
+      if: ${{ inputs.build_runner_build == true }}
+      working-directory: ${{inputs.workingDir}}
+      run: flutter packages pub run build_runner build --delete-conflicting-outputs
+    - name: Change Splash
+      if: ${{ inputs.change_splash == true }}
+      working-directory: ${{inputs.workingDir}}
+      run: flutter pub run flutter_native_splash:create
+    - name: Generate Launcher Icons
+      if: ${{ inputs.generate_launcher_icons == true }}
+      working-directory: ${{inputs.workingDir}}
+      run: flutter pub run flutter_launcher_icons
+    - name: Generate i18n
+      if: ${{ inputs.i18n_generation == true }}
+      working-directory: ${{inputs.workingDir}}
+      run: flutter gen-l10n
+    - name: Change App Name
+      working-directory: ${{inputs.workingDir}}
+      if: ${{ inputs.custom_app_name != '' }}
+      run: rename setAppName --value "${{ inputs.custom_app_name }}"
+    - name: Change Package Name
+      working-directory: ${{inputs.workingDir}}
+      if: ${{ inputs.custom_package_name != '' }}
+      run: rename setBundleId --value "${{ inputs.custom_package_name }}"
+    - name: Generate AAB or APK
+      working-directory: ${{inputs.workingDir}}
+      run: |
+        if [[ ${{ inputs.aab_generation }} == true ]]; then
+          flutter build appbundle --release ${{inputs.customArgs}}
+          echo "artifact_path=build/app/outputs/bundle/release/app-release.aab" >> $GITHUB_ENV
+        else
+          flutter build apk --release --split-per-abi ${{inputs.customArgs}}
+          echo "artifact_path=build/app/outputs/flutter-apk/*" >> $GITHUB_ENV
+        fi
+    - name: build IPA FIle # TODO POD INTALL , condition for mac runner
+      working-directory: ${{inputs.workingDir}}
+      if: ${{ inputs.ipa_generation == true }}
+      run: | # TODO:
+         # Check if the runner is macOS
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          flutter build ios --release
+          echo "artifact_path=build/ios/iphoneos/Runner.ipa" >> $GITHUB_ENV
+        else
+          echo "IPA generation is only supported on macOS runners."
+        fi
+
+
+    - name: Push to Releases
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: ${{ env.artifact_path}}
+        tag: v1.0.${{ github.run_number }}
+        token: ${{ inputs.PAT }}
+
+    - run: flutter config --enable-web # TODO release web build
+      if: ${{ inputs.gh_pages == true }}
+      shell: bash
+      working-directory: ${{inputs.workingDir}}
+    - run: flutter build web --release --web-renderer=${{inputs.webRenderer}} --base-href ${{inputs.baseHref}} ${{inputs.customArgs}}
+      if: ${{ inputs.gh_pages == true }}
+      shell: bash
+      working-directory: ${{inputs.workingDir}}
+    - run: git config user.name github-actions
+      if: ${{ inputs.gh_pages == true }}
+      shell: bash
+      working-directory: ${{inputs.workingDir}}
+    - run: git config user.email github-actions@github.com
+      if: ${{ inputs.gh_pages == true }}
+      shell: bash
+      working-directory: ${{inputs.workingDir}}
+    - run: git --work-tree build/web add --all
+      if: ${{ inputs.gh_pages == true }}
+      shell: bash
+      working-directory: ${{inputs.workingDir}}
+    - run: git commit -m "Automatic deployment by github-actions"
+      if: ${{ inputs.gh_pages == true }}
+      shell: bash
+      working-directory: ${{inputs.workingDir}}
+    - run: git push origin HEAD:${{inputs.targetBranch}} --force
+      if: ${{ inputs.gh_pages == true }}
+      shell: bash
+      working-directory: ${{inputs.workingDir}}
