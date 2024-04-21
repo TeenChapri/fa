@@ -99,6 +99,7 @@ runs:
   using: "composite"
   steps:
     - name: Debug gh_pages
+      shell: bash
       run: |
         echo "gh_pages value: ${{ inputs.gh_pages }}"
     - run: flutter pub get
