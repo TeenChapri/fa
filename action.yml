@@ -98,6 +98,9 @@ inputs: # add new run in release input
 runs:
   using: "composite"
   steps:
+    - name: Debug gh_pages
+      run: |
+        echo "gh_pages value: ${{ inputs.gh_pages }}"
     - run: flutter pub get
       shell: bash
       working-directory: ${{inputs.workingDir}}
