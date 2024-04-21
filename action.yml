@@ -107,7 +107,7 @@ inputs: # add new run in release input
     default: "/"
     type: string
   customArgs:
-    description: 'Custom args like: --dart-define="simple=example"'
+    description: 'Custom args like: --dart-define="key=value"'
     required: false
     default:
     type: string
@@ -237,7 +237,7 @@ runs:
     #     flutter build apk --release --split-per-abi ${{inputs.customArgs}}
     #     echo "artifact_path_2=build/app/outputs/flutter-apk/*" >> $GITHUB_ENV
 
-    - if: ${{ inputs.ipa_generation == 'true' }} #name: build IPA FIle # TODO POD INTALL , condition for mac runner
+    - if: ${{ inputs.ipa_generation == 'true' && runner.os == 'macOS'}} #name: build IPA FIle # TODO POD INTALL , condition for mac runner
       id: ios-path-output
       shell: bash
       working-directory: ${{inputs.workingDir}}
