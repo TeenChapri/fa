@@ -54,6 +54,22 @@ inputs: # add new run in release input
     required: false
     default: false
     type: boolean
+  dmg_generation:
+    description: "Generate DMG (MAC)"
+    required: false
+    default: false
+    type: boolean
+  appImage_generation:
+    description: "Generate LINUX APPIMAGE (LINUX)"
+    required: false
+    default: false
+    type: boolean
+  exe_generation:
+    description: "Generate EXE (Windows)"
+    required: false
+    default: false
+    type: boolean
+
   gh_pages:
     description: "Deploy to Github Pages"
     required: false
@@ -122,6 +138,15 @@ outputs:
   ipa-path:
     description: "Path to built IPA file if build-type was set for IOS"
     value: ${{ steps.ios-path-output.outputs.ipa-path }}
+  dmg-path:
+    description: "Path to built DMG file if build-type was set for MAC"
+    value: ${{ steps.mac-path-output.outputs.dmg-path }}
+  # appImage-path:
+  #   description: "Path to built APPIMAGE file if build-type was set for LINUX"
+  #   value: ${{ steps.linux-path-output.outputs.appImage-path }}
+  # exe-path:
+  #   description: "Path to built EXE file if build-type was set for Windows"
+  #   value: ${{ steps.windows-path-output.outputs.exe-path }}
 
 runs:
   using: "composite"
@@ -242,12 +267,22 @@ runs:
       shell: bash
       working-directory: ${{inputs.workingDir}}
       run: | # TODO: change this completely as we hve to sign the ipa
-        flutter build ios --release ${{inputs.customArgs}}
-        IPA_PATH=build/ios/iphoneos/`ls build/ios/iphoneos/ | grep ipa`
+        if [[ ${{ inputs.release }} == true ]]; then
+          flutter build ios --release ${{inputs.customArgs}}
+          IPA_PATH=build/ios/iphoneos/`ls build/ios/iphoneos/ | grep ipa`
            if [ ! -f $IPA_PATH ]; then
               exit 1
             fi
             echo "::set-output name=ipa-path::$(echo $IPA_PATH)"
+        else 
+          flutter build ios --debug ${{inputs.customArgs}}
+          IPA_PATH=build/ios/iphoneos/`ls build/ios/iphoneos/ | grep ipa`
+           if [ ! -f $IPA_PATH ]; then
+              exit 1
+            fi
+            echo "::set-output name=ipa-path::$(echo $IPA_PATH)"
+
+        fi
 
     # - name: Push to Releases
     #   uses: ncipollo/release-action@v1
@@ -255,6 +290,72 @@ runs:
     #     artifacts: ${{ env.artifact_path_1 }} ${{ env.artifact_path_2 }} ${{ env.artifact_path_3 }}
     #     tag: ${{ inputs.tag }}
     #     token: ${{ inputs.PAT }}
+
+    - if: ${{ inputs.dmg_generation == 'true' && runner.os == 'macOS'}} #name: build IPA FIle # TODO POD INTALL , condition for mac runner
+      id: mac-path-output
+      shell: bash
+      working-directory: ${{inputs.workingDir}}
+      run: | # TODO: change this completely as we hve to sign the ipa
+        if [[ ${{ inputs.release }} == true ]]; then
+          flutter build macos --release ${{inputs.customArgs}}
+          DMG_PATH=build/macos/Build/Products/Release/ | grep dmg`
+           if [ ! -f $DMG_PATH ]; then
+              exit 1
+            fi
+            echo "::set-output name=dmg-path::$(echo $DMG_PATH)"
+        else 
+          flutter build macos --debug ${{inputs.customArgs}}
+          DMG_PATH=build/macos/Build/Products/Debug/`ls build/macos/Build/Products/Debug/ | grep dmg`
+           if [ ! -f $DMG_PATH ]; then
+              exit 1
+            fi
+            echo "::set-output name=dmg-path::$(echo $DMG_PATH)"
+
+        fi
+
+    # - if: ${{ inputs.appImage_generation == 'true' && runner.os == 'Linux'}} #name: build IPA FIle # TODO POD INTALL , condition for mac runner
+    #   id: linux-path-output
+    #   shell: bash
+    #   working-directory: ${{inputs.workingDir}}
+    #   run: | # TODO: change this completely as we hve to sign the ipa
+    #     if [[ ${{ inputs.release }} == true ]]; then
+    #       flutter build macos --release ${{inputs.customArgs}}
+    #       DMG_PATH=build/macos/Build/Products/Release/ | grep dmg`
+    #        if [ ! -f $DMG_PATH ]; then
+    #           exit 1
+    #         fi
+    #         echo "::set-output name=dmg-path::$(echo $IPA_PATH)"
+    #     else
+    #       flutter build macos --debug ${{inputs.customArgs}}
+    #       DMG_PATH=build/macos/Build/Products/Debug/`ls build/macos/Build/Products/Debug/ | grep dmg`
+    #        if [ ! -f $DMG_PATH ]; then
+    #           exit 1
+    #         fi
+    #         echo "::set-output name=dmg-path::$(echo $DMG_PATH)"
+
+    #     fi
+
+    # - if: ${{ inputs.exe_generation == 'true' && runner.os == 'Windows'}} #name: build IPA FIle # TODO POD INTALL , condition for mac runner
+    #   id: windows-path-output
+    #   shell: bash
+    #   working-directory: ${{inputs.workingDir}}
+    #   run: | # TODO: change this completely as we hve to sign the ipa
+    #     if [[ ${{ inputs.release }} == true ]]; then
+    #       flutter build windows --release ${{inputs.customArgs}}
+    #       EXE_PATH=build/macos/Build/Products/Release/ | grep exe`
+    #        if [ ! -f $EXE_PATH ]; then
+    #           exit 1
+    #         fi
+    #         echo "::set-output name=exe-path::$(echo $EXE_PATH)"
+    #     else
+    #       flutter build windows --debug ${{inputs.customArgs}}
+    #       EXE_PATH=build/macos/Build/Products/Debug/`ls build/macos/Build/Products/Debug/ | grep exe`
+    #        if [ ! -f $EXE_PATH ]; then
+    #           exit 1
+    #         fi
+    #         echo "::set-output name=exe-path::$(echo $EXE_PATH)"
+
+    #     fi
 
     - if: ${{ inputs.gh_pages == 'true' }}
       run: flutter config --enable-web # TODO release web build
