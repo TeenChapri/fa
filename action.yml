@@ -1,18 +1,34 @@
 name: "Build Flutter App (APK/AAB/IPA),Deploy Flutter web app to github pages , only runs on MAC runner"
 description: "Automates the build and deployment of your Flutter web app on Github gh pages, "
-author: "manishmg3994"
+author: "mg3994"
 #currently either apk/aab or ipa , single path is supported
 branding:
   color: red
   icon: rocket
+
+# env: # ADD environment variables  TODO:
+#       KEY_JKS: ${{ secrets.KEY_JKS }}
+#       KEY_PATH: "key.jks"
+#       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+#       ALIAS_PASSWORD: ${{ secrets.ALIAS_PASSWORD }}
 
 inputs: # add new run in release input
   PAT:
     description: "Github Personal Access Token (Classic)"
     required: true
     type: string
+  tag:
+    description: "Release Tag"
+    required: false
+    type: string
+    default: v1.0.${{ github.run_number }}
   aab_generation:
     description: "Generate AAB"
+    required: false
+    default: false
+    type: boolean
+  apk_generation:
+    description: "Generate Apk"
     required: false
     default: false
     type: boolean
@@ -119,30 +135,35 @@ runs:
       working-directory: ${{inputs.workingDir}}
       if: ${{ inputs.custom_package_name != '' }}
       run: rename setBundleId --value "${{ inputs.custom_package_name }}"
-    - name: Generate AAB or APK
+    - name: Generate AAB
+      if: ${{ inputs.aab_generation == true }}
       shell: bash
       working-directory: ${{inputs.workingDir}}
       run: |
-        if [[ ${{ inputs.aab_generation }} == true ]]; then
-          flutter build appbundle --release ${{inputs.customArgs}}
-          echo "artifact_path=build/app/outputs/bundle/release/app-release.aab" >> $GITHUB_ENV
-        else
-          flutter build apk --release --split-per-abi ${{inputs.customArgs}}
-          echo "artifact_path=build/app/outputs/flutter-apk/*" >> $GITHUB_ENV
-        fi
+        flutter build appbundle --release ${{inputs.customArgs}}
+        echo "artifact_path_1=build/app/outputs/bundle/release/app-release.aab" >> $GITHUB_ENV
+
+    - name: Generate APK
+      shell: bash
+      if: ${{ inputs.apk_generation == true }}
+      working-directory: ${{inputs.workingDir}}
+      run: |
+        flutter build apk --release --split-per-abi ${{inputs.customArgs}}
+        echo "artifact_path_2=build/app/outputs/flutter-apk/*" >> $GITHUB_ENV
+
     - name: build IPA FIle # TODO POD INTALL , condition for mac runner
       shell: bash
       working-directory: ${{inputs.workingDir}}
       if: ${{ inputs.ipa_generation == true }}
       run: | # TODO:
         flutter build ios --release
-        echo "artifact_path=build/ios/iphoneos/Runner.ipa" >> $GITHUB_ENV
+        echo "artifact_path_3=build/ios/iphoneos/*" >> $GITHUB_ENV
 
     - name: Push to Releases
       uses: ncipollo/release-action@v1
       with:
-        artifacts: ${{ env.artifact_path}}
-        tag: v1.0.${{ github.run_number }}
+        artifacts: "${{ env.artifact_path_1 }},${{ env.artifact_path_2 }},${{ env.artifact_path_3 }}"
+        tag: ${{ inputs.tag }}
         token: ${{ inputs.PAT }}
 
     - run: flutter config --enable-web # TODO release web build
