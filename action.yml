@@ -135,14 +135,8 @@ runs:
       working-directory: ${{inputs.workingDir}}
       if: ${{ inputs.ipa_generation == true }}
       run: | # TODO:
-         # Check if the runner is macOS
-        if [[ "$RUNNER_OS" == "macOS" ]]; then
-          flutter build ios --release
-          echo "artifact_path=build/ios/iphoneos/Runner.ipa" >> $GITHUB_ENV
-        else
-          echo "IPA generation is only supported on macOS runners."
-        fi
-
+        flutter build ios --release
+        echo "artifact_path=build/ios/iphoneos/Runner.ipa" >> $GITHUB_ENV
 
     - name: Push to Releases
       uses: ncipollo/release-action@v1
