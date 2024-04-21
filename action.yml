@@ -1,6 +1,6 @@
 name: "Build Flutter App (APK/AAB/IPA),Deploy Flutter web app to github pages , only runs on MAC runner"
 description: "Automates the build and deployment of your Flutter web app on Github gh pages, "
-author: "mg3994"
+author: "manishmg3994"
 #currently either apk/aab or ipa , single path is supported
 branding:
   color: red
@@ -162,7 +162,7 @@ runs:
     - name: Push to Releases
       uses: ncipollo/release-action@v1
       with:
-        artifacts: "${{ env.artifact_path_1 }},${{ env.artifact_path_2 }},${{ env.artifact_path_3 }}"
+        artifacts: ${{ env.artifact_path_1 }} ${{ env.artifact_path_2 }} ${{ env.artifact_path_3 }}
         tag: ${{ inputs.tag }}
         token: ${{ inputs.PAT }}
 
